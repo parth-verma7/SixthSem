@@ -8,3 +8,6 @@ def malformed_body(mime):
 
 def bad_request(msg):
     return app_error(msg, 400)
+
+def server_error():
+    return app_error("unexpected error", 500)
