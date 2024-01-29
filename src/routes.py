@@ -17,6 +17,7 @@ def exception_handler(func):
     return wrapper
 
 @api.before_request
+@exception_handler
 def jsonify_middleware():
     if request.headers['Content-Type'] != 'application/json':
         return jsonify({'error': 'Unsupported Mime Type'}), 415
