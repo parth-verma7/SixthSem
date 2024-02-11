@@ -12,6 +12,7 @@ def exception_handler(func):
             return func(*args, **kwargs)
         except Exception as e:
             error_code = getattr(e, "code", 500)
+            print(f"Error: {str(e)}")
             return errors.server_error()
     wrapper.__name__ = func.__name__
     return wrapper
@@ -24,6 +25,7 @@ def jsonify_middleware():
     try:
         request.data = request.json
     except Exception as e:
+        print(f"Error: {str(e)}")
         return errors.malformed_body("JSON")
 
 
@@ -54,4 +56,10 @@ def get_question(question_id):
         return {"data" : f"Your question id is {question_id}"}, 201
     else:
         return {"data" : f"what is your favourite color?"}, 201
+
+@api.route('/test', methods=['GET'])
+def testing():
+    from .db import get_db
+    db = get_db()
+    return {"data" : "ok"}, 200
 
