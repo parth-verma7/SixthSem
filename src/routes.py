@@ -17,6 +17,7 @@ def exception_handler(func):
     wrapper.__name__ = func.__name__
     return wrapper
 
+
 @api.before_request
 @exception_handler
 def jsonify_middleware():
