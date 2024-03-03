@@ -14,7 +14,7 @@ def get_db():
         for attempt in range(0, max_attempt):
             try:
                 db = MongoClient(uri, server_api=ServerApi('1'))
-                g.db = db
+                g.db = db["ContentForge"]
                 print("Connection Successful")
                 break
             except Exception as e:

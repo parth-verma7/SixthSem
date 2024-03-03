@@ -25,16 +25,16 @@ def validate_user(user_data):
 
 def validate_question(question_data):
   """
-  Validates user data against the defined in src.schemas.question_schema
+  Validates question data against the defined in src.schemas.question_schema
 
   Args:
-      question_data: A dictionary containing user information.
+      question_data: A dictionary containing question information.
 
   Returns:
       None if the data is valid, otherwise raises a ValidationError with details.
   """
   try:
-    validate(question_data, user_schema)
+    validate(question_data, question_schema)
   except ValidationError as e:
         raise ValidationError(f"Error: Invalid question data: {e}")
 

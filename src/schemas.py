@@ -6,7 +6,7 @@ user_schema = {
   "required": [
     "name",
     "email",
-    "password_hash"
+    "password"
   ],
   "properties": {
     "name": {
@@ -23,7 +23,7 @@ user_schema = {
       "format": "email",
       "description": "User's email address"
     },
-    "password_hash": {
+    "password": {
       "type": "string",
       "description": "User's hashed password"
     }
