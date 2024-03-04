@@ -46,20 +46,33 @@ def user_answers(user_id):
     db = get_db()
     answer_collection = db["answer"]
     if request.method == 'GET':
-        print(request.data)
         question_id = request.data.get('questionId', None)
-        query = {"userId" : user_id}
-        if question_id:  query["questionId"] = question_id
-        print(query)
-        cursor = answer_collection.find(query)
+        query = {"userId" : ObjectId(user_id)}
+        if question_id:  query["questionId"] = ObjectId(question_id)
+        pipeline = [
+            {
+                "$match": query 
+            },
+            {
+                "$lookup": {
+                    "from": "questions",  
+                    "localField": "questionId",
+                    "foreignField": "_id",
+                    "as": "questionData"
+                }
+            },
+        ]
+        cursor = answer_collection.aggregate(pipeline)
         json_list = dumps([doc for doc in cursor])
         return json_list, 200
     else: # TODO
         data = {"userId": user_id, **request.data}
         validate_answer(data)
-        if db["users"].find_one({"_id": ObjectId(user_id)})  is None:
+        data["questionId"] = ObjectId(data["questionId"])
+        data["userId"] = ObjectId(data["userId"])
+        if db["users"].find_one({"_id": data["userId"]})  is None:
             raise Exception("No such user")
-        if db["questions"].find_one({"_id" : ObjectId(data["questionId"])}) is None:
+        if db["questions"].find_one({"_id" : data["questionId"]}) is None:
             raise Exception("No such question")
         answer_collection.insert_one(data)
         return {"data" : "created"}, 201
