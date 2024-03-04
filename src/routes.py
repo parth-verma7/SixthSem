@@ -25,7 +25,6 @@ def exception_handler(func):
     wrapper.__name__ = func.__name__
     return wrapper
 
-
 @api.before_request
 @exception_handler
 def jsonify_middleware():
@@ -39,20 +38,6 @@ def jsonify_middleware():
         print(f"Error: {str(e)}")
         return errors.malformed_body("JSON")
 
-# GET for frontend and LLM. PATCH and DELETE are convenience methods for admin
-@api.route('/answer/<answer_id>', methods=['GET', 'PATCH', 'DELETE'], endpoint= 'specific_answer_routes')
-@exception_handler
-def specific_answer(answer_id):
-    db = get_db()
-    answer_collection = db["answer"]
-    if request.method == 'GET':
-        answer = answer_collection.find_one({"_id" : ObjectId(answer_id)})
-        return dumps(answer), 200
-    elif request.method == 'PATCH': # TODO
-        return {"data" : "changed"}
-    else: # TODO
-        return {"data" : "deleted"}
-
 # GET for frontend and LLM. POST is convenience method for admin
 # use questionId in body for answer to specific question
 @api.route('/answer/<user_id>', methods=['GET', 'POST'], endpoint='user_answers')
@@ -61,9 +46,11 @@ def user_answers(user_id):
     db = get_db()
     answer_collection = db["answer"]
     if request.method == 'GET':
-        question_id = request.data['questionId']
+        print(request.data)
+        question_id = request.data.get('questionId', None)
         query = {"userId" : user_id}
-        if question_id: query["questionId"] = question_id
+        if question_id:  query["questionId"] = question_id
+        print(query)
         cursor = answer_collection.find(query)
         json_list = dumps([doc for doc in cursor])
         return json_list, 200
