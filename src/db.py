@@ -9,10 +9,11 @@ def get_db():
         password = os.environ.get("MONGODB_PASSWORD")
         uri = uri.split("<password>")
         uri = uri[0] + password + uri[1];
-
+        print(uri)
         max_attempt = 5
         for attempt in range(0, max_attempt):
             try:
+                print("Trying to connect to MongoDB")
                 db = MongoClient(uri, server_api=ServerApi('1'))
                 g.db = db["ContentForge"]
                 print("Connection Successful")
@@ -21,7 +22,7 @@ def get_db():
                 if attempt < max_attempt:
                     print(f"Attempt {attempt + 1} failed. Error {str(e)}")
                 else:
-                    print(f"Failed to connect to database. Exiting")
+                    print(f"Failed to connect to database. Exiting. Last error : {str(e)}")
                     raise
     return g.db
 
