@@ -40,7 +40,6 @@ def jsonify_middleware():
         return errors.malformed_body("JSON")
 
 
-# GET for frontend and LLM. POST is convenience method for admin
 # use questionId in body for answer to specific question
 @api.route("/answer/<user_id>", methods=["GET", "POST"], endpoint="user_answers")
 @exception_handler
@@ -66,16 +65,39 @@ def user_answers(user_id):
         cursor = answer_collection.aggregate(pipeline)
         json_list = dumps([doc for doc in cursor])
         return json_list, 200
-    else:  # TODO
-        data = {"userId": user_id, **request.data}
-        validate_answer(data)
-        data["questionId"] = ObjectId(data["questionId"])
-        data["userId"] = ObjectId(data["userId"])
-        if db["users"].find_one({"_id": data["userId"]}) is None:
+    else:
+        if not isinstance(request.data, list):
+            return errors.bad_request(
+                "data must be a list of answer object obeying answer schema"
+            )
+
+        data = [{"userId": user_id, **answer} for answer in request.data]
+        try:
+            all(validate_answer(answer) for answer in data)
+        except Exception as e:
+            raise e
+
+        if db["users"].find_one({"_id": ObjectId(user_id)}) is None:
             raise Exception("No such user")
-        if db["questions"].find_one({"_id": data["questionId"]}) is None:
-            raise Exception("No such question")
-        answer_collection.insert_one(data)
+
+        data = list(
+            map(
+                lambda answer: {
+                    **answer,
+                    "questionId": ObjectId(answer["questionId"]),
+                    "userId": ObjectId(answer["userId"]),
+                },
+                data,
+            )
+        )
+        questionIds = [answer["questionId"] for answer in data]
+        cnt = db["questions"].count_documents({"_id": {"$in": questionIds}})
+        if cnt != len(questionIds):
+            return errors.bad_request(
+                "Either some questions do not exists or there are answers to duplicate questions in the request data"
+            )
+
+        answer_collection.insert_many(data)
         return {"data": "created"}, 201
 
 
