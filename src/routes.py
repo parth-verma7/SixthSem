@@ -7,6 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from . import errors
 from .db import get_db
+from .openapi import get_openai_client
 from .pinecone_ops import ask_question, fetch_from_db
 from .validators import validate_answer, validate_question
 
@@ -146,44 +147,55 @@ def pinecone_store(user_id):
 )
 @exception_handler
 def pinecone_response(user_id):
-    data = request.get_json()
-    query = data.get("query")
-    res = ask_question(user_id, query)
+    db = get_db()
+    if request.method == "GET":
+        cursor = db["response"].find({"userId": user_id})
+        json_list = dumps([doc for doc in cursor])
+        return json_list, 200
+    else:
+        data = request.get_json()
+        query = data.get("query")
+        res = ask_question(user_id, query)
+        print(res)
 
-    assist_prompt = f"""
-        Give me an article that I can post on my social media.
-        Don't give me any warnings. 
-        Just give me the consice and crisp response that can attract public. 
-        Also while generating response take some inspiration from this content and keep this content as your base.
-        The content is - {res} 
-    """
+        assist_prompt = f"""
+            Give me an article that I can post on my social media.
+            Don't give me any warnings. 
+            Just give me the consice and crisp response that can attract public. 
+            Also while generating response take some inspiration from this content and keep this content as your base.
+            The content is - {res} 
+        """
 
-    user_prompt = f"""
-        Tell me something about the entrepreneurial journey of any startup which is powered with the technology of Computer Vision in Security Drones.
-        {assist_prompt}
-    """
-    import os
+        user_prompt = f"""
+            Tell me something about the entrepreneurial journey of any startup which is powered with the technology of Computer Vision in Security Drones.
+            {assist_prompt}
+        """
 
-    from openai import OpenAI
+        client = get_openai_client()
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": assist_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": assist_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    # tokenizer = AutoTokenizer.from_pretrained("google/gemma-2b", token='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')
-    # model = AutoModelForCausalLM.from_pretrained("google/gemma-2b", token='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')
+        # tokenizer = AutoTokenizer.from_pretrained("google/gemma-2b", token='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')
+        # model = AutoModelForCausalLM.from_pretrained("google/gemma-2b", token='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')
 
-    # user_input = user_prompt
-    # input_ids = tokenizer.encode(user_input, return_tensors="pt")
-    # output = model.generate(input_ids, max_length=100, num_beams=5, no_repeat_ngram_size=2, top_k=50, top_p=0.95, temperature=0.7)
-    # generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
-    final_response = response.choices[0].message.content
-    return final_response
+        # user_input = user_prompt
+        # input_ids = tokenizer.encode(user_input, return_tensors="pt")
+        # output = model.generate(input_ids, max_length=100, num_beams=5, no_repeat_ngram_size=2, top_k=50, top_p=0.95, temperature=0.7)
+        # generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+        final_response = response.choices[0].message.content
+        response_document = {
+            "response": final_response,
+            "userId": user_id,
+            "prompt": user_prompt,
+        }
+        db["response"].insert_one(response_document)
+        return final_response
 
 
 # GET for frontend, LLM. POST only for admin, convenience
@@ -201,13 +213,6 @@ def question():
         cursor = question_collection.find({})
         json_list = dumps([doc for doc in cursor])
         return json_list, 200
-
-
-# For frontend and LLM
-@api.route("/question/<question_id>", methods=["GET"], endpoint="get_specific_question")
-@exception_handler
-def get_specific_question(question_id):
-    return {"data": f"Your question id is {question_id}"}, 201
 
 
 @api.route("/test", methods=["GET"])
