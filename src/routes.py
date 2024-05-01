@@ -48,7 +48,9 @@ def user_answers(user_id):
     db = get_db()
     answer_collection = db["answer"]
     if request.method == "GET":
-        question_id = request.data.get("questionId", None)
+        question_id = None
+        if (request.data):
+            question_id = request.data.get("questionId", None)
         query = {"userId": ObjectId(user_id)}
         if question_id:
             query["questionId"] = ObjectId(question_id)
@@ -110,7 +112,9 @@ def pinecone_store(user_id):
     db = get_db()
     answer_collection = db["answer"]
     if request.method == "GET":
-        question_id = request.data.get("questionId", None)
+        question_id = None
+        if (request.data):
+            question_id = request.data.get("questionId", None)
         query = {"userId": ObjectId(user_id)}
         if question_id:
             query["questionId"] = ObjectId(question_id)
@@ -156,7 +160,8 @@ def pinecone_response(user_id):
         data = request.get_json()
         query = data.get("query")
         res = ask_question(user_id, query)
-        print(res)
+        print("Query is ", query)
+        print("Pinecone Response is ", res)
 
         assist_prompt = f"""
             Give me an article that I can post on my social media.
@@ -192,10 +197,10 @@ def pinecone_response(user_id):
         response_document = {
             "response": final_response,
             "userId": user_id,
-            "prompt": user_prompt,
+            "prompt": query,
         }
         db["response"].insert_one(response_document)
-        return final_response
+        return final_response, 200
 
 
 # GET for frontend, LLM. POST only for admin, convenience
